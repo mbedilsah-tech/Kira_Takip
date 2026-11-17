@@ -99,11 +99,17 @@ details > div{display:flex;flex-direction:column;gap:10px;padding-top:8px}
 .mrow .r small{color:var(--muted);font-size:.95rem}
 .mrow.empty b,.mrow.empty .r{color:var(--muted);font-weight:500}
 .scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:.9rem}
-th,td{padding:8px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
-th{font-weight:600;color:var(--muted)}
-th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--surface)}
-tfoot td{font-weight:700;border-bottom:0}
+.scroll{border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:1rem}
+th,td{padding:10px 12px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+th{font-weight:700;color:var(--ink);background:var(--soft)}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--surface);font-weight:600;border-right:1px solid var(--line)}
+th:first-child{background:var(--soft)}
+th.l,td.l{text-align:left;white-space:normal;min-width:140px}
+td.nil{color:var(--muted)}
+td.tot{font-weight:700}
+.ok{color:var(--accent);font-weight:700}
+tfoot td{font-weight:700;border-bottom:0;border-top:2px solid var(--ink)}
 
 .tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));gap:8px;z-index:5}
 .tabs a{flex:1;max-width:180px;text-align:center;padding:14px 6px;border-radius:12px;text-decoration:none;color:var(--muted);font-weight:700;font-size:1.05rem}
@@ -280,26 +286,43 @@ function refreshComputed(){
 function renderYil(){
   const y=state.year, P=state.primary.name;
   const cs=AY.map((_,i)=>({mo:peek(y,i),c:calc(peek(y,i))}));
-  const td=v=>`<td>${fmt(v)}</td>`;
+  const cell=(v,extra='')=>v?`<td>${fmt(v)}${extra}</td>`:`<td class="nil">–</td>`;
   const sum=f=>cs.reduce((a,x)=>a+f(x),0);
   const paidRent=(x,p)=>x.mo.paid&&x.mo.paid[p.id]?(+x.mo.rents[p.id]||0):0;
+  const sentMark=(x,id)=>x.mo.sent&&x.mo.sent[id]?'<span class="ok" aria-label="gönderildi"> ✓</span>':'';
+  const used=cs.map((x,i)=>i).filter(i=>cs[i].c.total>0||cs[i].c.gider>0);
+  const rows=used.length?used:[];
+  const empty=`<p class="hint">Bu yıl için henüz yatan kira işaretlenmedi.</p>`;
+
   const t1=`<table><thead><tr><th>Ay</th>${state.properties.map(p=>`<th>${esc(p.name)}</th>`).join('')}<th>Toplam</th></tr></thead><tbody>
-    ${cs.map((x,i)=>`<tr><td>${AY[i]}</td>${state.properties.map(p=>td(paidRent(x,p))).join('')}${td(x.c.total)}</tr>`).join('')}</tbody>
-    <tfoot><tr><td>Yıl</td>${state.properties.map(p=>td(sum(x=>paidRent(x,p)))).join('')}${td(sum(x=>x.c.total))}</tr></tfoot></table>`;
+    ${rows.map(i=>{const x=cs[i];return `<tr><td>${AY[i]}</td>${state.properties.map(p=>cell(paidRent(x,p))).join('')}<td class="tot">${fmt(x.c.total)}</td></tr>`}).join('')}</tbody>
+    <tfoot><tr><td>Yıl</td>${state.properties.map(p=>`<td>${fmt(sum(x=>paidRent(x,p)))}</td>`).join('')}<td class="tot">${fmt(sum(x=>x.c.total))}</td></tr></tfoot></table>`;
+
   const t2=`<table><thead><tr><th>Ay</th><th>${esc(P)}</th>${state.members.map(m=>`<th>${esc(m.name)}</th>`).join('')}<th>Masraf</th><th>Artan</th></tr></thead><tbody>
-    ${cs.map((x,i)=>`<tr><td>${AY[i]}</td>${td(x.c.anne)}${state.members.map(()=>td(x.c.share)).join('')}${td(x.c.gider)}${td(x.c.fark)}</tr>`).join('')}</tbody>
-    <tfoot><tr><td>Yıl</td>${td(sum(x=>x.c.anne))}${state.members.map(()=>td(sum(x=>x.c.share))).join('')}${td(sum(x=>x.c.gider))}${td(sum(x=>x.c.fark))}</tr></tfoot></table>`;
+    ${rows.map(i=>{const x=cs[i];return `<tr><td>${AY[i]}</td>${cell(x.c.anne,sentMark(x,'_p'))}${state.members.map(m=>cell(x.c.share,sentMark(x,m.id))).join('')}${cell(x.c.gider)}${cell(x.c.fark)}</tr>`}).join('')}</tbody>
+    <tfoot><tr><td>Yıl</td><td>${fmt(sum(x=>x.c.anne))}</td>${state.members.map(()=>`<td>${fmt(sum(x=>x.c.share))}</td>`).join('')}<td>${fmt(sum(x=>x.c.gider))}</td><td>${fmt(sum(x=>x.c.fark))}</td></tr></tfoot></table>`;
+
+  const exps=[];cs.forEach((x,i)=>(x.mo.expenses||[]).forEach(e=>{if(+e.amount)exps.push({m:i,desc:e.desc,amount:+e.amount})}));
+  const t3=exps.length?`<table><thead><tr><th>Ay</th><th class="l">Ne için</th><th>Tutar</th></tr></thead><tbody>
+    ${exps.map(e=>`<tr><td>${AY[e.m]}</td><td class="l">${esc(e.desc||'Masraf')}</td><td>${fmt(e.amount)}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td>Yıl</td><td></td><td>${fmt(exps.reduce((a,e)=>a+e.amount,0))}</td></tr></tfoot></table>`
+    :`<p class="hint">Bu yıl masraf girilmedi.</p>`;
+
   return `<div class="stepper">
     <button class="arrow" data-act="year" data-d="-1" aria-label="Önceki yıl">‹</button><b>${y}</b>
     <button class="arrow" data-act="year" data-d="1" aria-label="Sonraki yıl">›</button></div>
   <section class="panel">
     <div class="sumline" style="border:0;padding:0"><span>Yıl boyunca yatan</span><span class="num">${tl(sum(x=>x.c.total))}</span></div>
-    <p class="hint">Bir aya dokununca o ay açılır.</p>
-    <div>${cs.map((x,i)=>`<button class="mrow${x.c.total>0?'':' empty'}" data-act="open-month" data-m="${i}"><b>${AY[i]}</b>
-      <span class="r">${x.c.total>0?`<span>${tl(x.c.total)}</span><small>kişi başı ${tl(x.c.share)}</small>`:'kira işaretlenmedi'}</span></button>`).join('')}</div>
+    <p class="hint">Tablolar yana kaydırılabilir. Tutarlar ₺.</p>
   </section>
-  <section class="panel"><details style="border:0;padding:0"><summary>Ayrıntılı tabloları göster</summary><div>
-    <div class="scroll">${t1}</div><div class="scroll">${t2}</div><p class="hint">Tablolar yana kaydırılabilir.</p></div></details></section>`;
+  <section class="panel"><h2>Gelen kiralar</h2>
+    ${rows.length?`<div class="scroll">${t1}</div><p class="hint">– : o ay kira yatmadı.</p>`:empty}</section>
+  <section class="panel"><h2>Kime ne kadar verildi</h2>
+    ${rows.length?`<div class="scroll">${t2}</div><p class="hint"><span class="ok">✓</span> : parası gönderildi olarak işaretlenmiş.</p>`:empty}</section>
+  <section class="panel"><h2>Masraflar</h2>${t3}</section>
+  <section class="panel"><details style="border:0;padding:0"><summary>Bir aya git</summary><div>
+    ${cs.map((x,i)=>`<button class="mrow${x.c.total>0?'':' empty'}" data-act="open-month" data-m="${i}"><b>${AY[i]}</b>
+      <span class="r">${x.c.total>0?`<span>${tl(x.c.total)}</span><small>kişi başı ${tl(x.c.share)}</small>`:'kira işaretlenmedi'}</span></button>`).join('')}</div></details></section>`;
 }
 
 /* ---------- Ayarlar ---------- */
