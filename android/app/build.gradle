@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+// İmza anahtarı GitHub "Secrets" içinden gelir (bkz. README). Yoksa geçici bir anahtarla imzalanır.
+def ksPath = System.getenv("KIRA_KEYSTORE_PATH")
+def hasKey = ksPath != null && file(ksPath).exists()
+
+android {
+    namespace 'com.mbedilsah.kiradefteri'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.mbedilsah.kiradefteri'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        if (hasKey) {
+            kira {
+                storeFile file(ksPath)
+                storePassword System.getenv("KIRA_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KIRA_KEY_ALIAS")
+                keyPassword System.getenv("KIRA_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig hasKey ? signingConfigs.kira : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

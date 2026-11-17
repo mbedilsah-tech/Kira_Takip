@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kira Defteri</title>
+<meta name="theme-color" content="#0B5F51">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one phone-width column, two numbered steps (yatanları işaretle, paylaştır), large type and touch targets, fixed bottom bar. */
+/* Always light: white page, panels separated by borders. */
+:root{
+  color-scheme:light;
+  --paper:#FFFFFF; --surface:#FFFFFF; --ink:#102A25; --muted:#4A5F59; --line:#C9D5D0;
+  --accent:#0B5F51; --on-accent:#FFFFFF; --soft:#E6EFEC; --mark:#8A5A00; --bad:#A32D22;
+  --display:"Bricolage Grotesque","Instrument Sans",system-ui,sans-serif;
+  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:18px;line-height:1.45;-webkit-text-size-adjust:100%}
+.wrap{max-width:560px;margin:0 auto;padding:16px 16px 120px;display:flex;flex-direction:column;gap:16px}
+h1,h2{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:1.25rem;font-weight:700;color:var(--muted)}
+h2{font-size:1.35rem;font-weight:700;display:flex;align-items:center;gap:10px}
+.step{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-size:1.1rem}
+.num{font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.stepper{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:8px}
+.stepper b{font-family:var(--display);font-size:1.5rem;font-weight:700;text-align:center;flex:1}
+.arrow{width:60px;height:60px;border-radius:12px;border:0;background:var(--soft);cursor:pointer;font-size:2rem;line-height:1;font-weight:700}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.hint{color:var(--muted);font-size:1rem;margin:0}
+.warn{color:var(--bad);font-weight:600;margin:0}
+
+.rent{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.rent:first-child{border-top:0;padding-top:0}
+.rinfo{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+.rname{font-weight:600;font-size:1.15rem;overflow-wrap:anywhere}
+.amtbtn{border:0;background:transparent;padding:0;min-height:44px;cursor:pointer;color:var(--ink);font-family:var(--display);font-weight:700;font-size:1.55rem;font-variant-numeric:tabular-nums;text-decoration:underline dotted var(--line) 2px;text-underline-offset:7px}
+.rent:not(.paid) .amtbtn{color:var(--muted)}
+.rent.editing{flex-direction:column;align-items:stretch;gap:8px;background:var(--soft);margin:0 -16px;padding:12px 16px}
+.rent.editing label{font-weight:600;font-size:1.15rem}
+.edit{display:flex;gap:8px}
+.box{position:relative;flex:1;min-width:0}
+.box::after{content:"₺";position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.box input.money{padding-right:34px;font-size:1.3rem}
+
+input[type=text],select,textarea{width:100%;padding:12px 14px;border:2px solid var(--line);border-radius:12px;background:var(--paper);min-height:56px;font-size:1.15rem}
+input[type=text]:focus,select:focus,textarea:focus{border-color:var(--accent);outline:0}
+input.money{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.sumline{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-top:2px solid var(--ink);padding-top:12px;font-weight:700;font-size:1.2rem}
+.sumline .num{font-family:var(--display);font-size:1.7rem}
+
+.btn{padding:14px 18px;border-radius:12px;border:2px solid var(--line);background:transparent;cursor:pointer;font-weight:700;min-height:56px;font-size:1.1rem;text-align:center}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn.wide{width:100%}
+.btn.danger{color:var(--bad)}
+.btn.small{min-height:48px;padding:8px 14px;font-size:1rem}
+.edit .btn{min-height:56px}
+.toast{font-weight:700;color:var(--accent);min-height:1.4em;margin:0;text-align:center}
+
+.person{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.person:first-of-type{border-top:0}
+.person .who{flex:1;min-width:0}
+.person .who b{display:block;font-size:1.2rem;overflow-wrap:anywhere}
+.person .who span{font-family:var(--display);font-weight:700;font-size:1.6rem;font-variant-numeric:tabular-nums}
+.tick{flex:0 0 auto;min-width:128px;min-height:56px;border-radius:12px;border:2px solid var(--accent);background:transparent;color:var(--accent);font-weight:700;cursor:pointer;font-size:1.05rem;padding:8px 12px}
+.tick[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.extra{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line);color:var(--muted);font-weight:600}
+.extra .num{color:var(--ink)}
+.extra .mark{color:var(--mark)}
+
+.line{display:flex;gap:8px;align-items:center}
+.line .grow{flex:1;min-width:0}
+.line .w-amt{flex:0 0 130px}
+.x{flex:0 0 auto;width:52px;height:56px;border-radius:12px;border:2px solid var(--line);background:transparent;cursor:pointer;font-size:1.5rem;color:var(--bad)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-weight:600}
+.prop{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
+.prop:first-of-type{border-top:0;padding-top:0}
+details{border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;font-weight:600;color:var(--muted);min-height:44px;display:flex;align-items:center}
+details > div{display:flex;flex-direction:column;gap:10px;padding-top:8px}
+
+.mrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 4px;border:0;border-top:1px solid var(--line);background:transparent;cursor:pointer;min-height:64px}
+.mrow:first-of-type{border-top:0}
+.mrow b{flex:1;font-size:1.2rem}
+.mrow .r{text-align:right}
+.mrow .r span{display:block;font-weight:700;font-size:1.2rem;font-variant-numeric:tabular-nums}
+.mrow .r small{color:var(--muted);font-size:.95rem}
+.mrow.empty b,.mrow.empty .r{color:var(--muted);font-weight:500}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{padding:8px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+th{font-weight:600;color:var(--muted)}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--surface)}
+tfoot td{font-weight:700;border-bottom:0}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));gap:8px;z-index:5}
+.tabs a{flex:1;max-width:180px;text-align:center;padding:14px 6px;border-radius:12px;text-decoration:none;color:var(--muted);font-weight:700;font-size:1.05rem}
+.tabs a[aria-current="page"]{background:var(--ink);color:var(--paper)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Kira Defteri</h1>
+  <main id="app" class="wrap" style="padding:0"></main>
+</div>
+<nav class="tabs" aria-label="Sayfalar">
+  <a href="#ay">Bu ay</a><a href="#yil">Bütün yıl</a><a href="#ayarlar">Ayarlar</a>
+</nav>
+<script>
+const KEY='kira-defteri-v1';
+const AY=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+const uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf=new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2});
+const fmt=n=>nf.format(n||0);
+const tl=n=>fmt(n)+' ₺';
+const parseMoney=s=>{const v=parseFloat(String(s).replace(/\./g,'').replace(',','.').replace(/[^\d.\-]/g,''));return isFinite(v)?v:0};
+const parseNum=s=>{const v=parseFloat(String(s).replace(',','.').replace(/[^\d.\-]/g,''));return isFinite(v)?v:0};
+const mkey=(y,m)=>y+'-'+String(m+1).padStart(2,'0');
+
+function seed(){
+  // Örnek veri. Gerçek bilgiler Ayarlar sayfasından girilir ve yalnızca telefonda saklanır.
+  const names=['Dükkan','Daire 1','Daire 2','Depo'];
+  const rentsDef=[6000,8500,7500,3000];
+  const properties=names.map((n,i)=>({id:uid(),name:n,rent:rentsDef[i]}));
+  const members=['Kişi 1','Kişi 2','Kişi 3'].map(n=>({id:uid(),name:n}));
+  const all=()=>Object.fromEntries(properties.map(p=>[p.id,true]));
+  const rents=()=>Object.fromEntries(properties.map(p=>[p.id,p.rent]));
+  const y=new Date().getFullYear(), m=new Date().getMonth();
+  const months={};
+  if(m>0)months[mkey(y,m-1)]={rents:rents(),paid:all(),expenses:[],primary:{mode:'percent',value:17.5},sent:{}};
+  return {year:y,properties,members,primary:{name:'Anne',mode:'percent',value:17.5},months};
+}
+function valid(s){return s&&Array.isArray(s.properties)&&Array.isArray(s.members)&&s.primary&&s.months&&typeof s.year==='number'}
+// Eski kayıtları yeni yapıya taşır: her yerin sabit kirası, her ayın "yattı" işaretleri
+function migrate(s){
+  const keys=Object.keys(s.months).sort();
+  s.properties.forEach(p=>{
+    if(typeof p.rent!=='number'){let v=0;keys.forEach(k=>{const r=+((s.months[k].rents||{})[p.id]);if(r>0)v=r});p.rent=v}
+  });
+  keys.forEach(k=>{const mo=s.months[k];
+    if(!mo.paid){mo.paid={};Object.entries(mo.rents||{}).forEach(([id,v])=>{if(+v>0)mo.paid[id]=true})}
+  });
+  return s;
+}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(valid(s))return migrate(s)}catch(e){}return seed()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+
+let state=load();
+let month=pickMonth();
+let pendingDel=null, editing=null, toast='';
+
+function pickMonth(){
+  const now=new Date();
+  if(state.year===now.getFullYear())return now.getMonth();
+  for(let m=11;m>=0;m--){const mo=state.months[mkey(state.year,m)];if(mo&&calc(mo).total>0)return m}
+  return 0;
+}
+function getMonth(y,m){
+  const k=mkey(y,m);
+  if(!state.months[k])state.months[k]={rents:{},paid:{},expenses:[],primary:{mode:state.primary.mode,value:state.primary.value},sent:{}};
+  const mo=state.months[k];
+  if(!mo.primary)mo.primary={mode:state.primary.mode,value:state.primary.value};
+  if(!mo.sent)mo.sent={}; if(!mo.expenses)mo.expenses=[]; if(!mo.rents)mo.rents={}; if(!mo.paid)mo.paid={};
+  state.properties.forEach(p=>{if(mo.rents[p.id]===undefined)mo.rents[p.id]=p.rent||0});
+  return mo;
+}
+function peek(y,m){return state.months[mkey(y,m)]||{rents:{},paid:{},expenses:[],primary:state.primary,sent:{}}}
+// Yeni tutar: varsayılan kira değişir, fromKey ve sonrasındaki henüz yatmamış aylar da güncellenir
+function setRent(id,v,fromKey){
+  const p=state.properties.find(x=>x.id===id); if(!p)return;
+  p.rent=v;
+  Object.keys(state.months).forEach(k=>{const mo=state.months[k];
+    if(k>=fromKey&&!(mo.paid&&mo.paid[id])&&mo.rents)mo.rents[id]=v});
+}
+
+// Excel ile aynı hesap, yalnızca yatan kiralarla: anne = sabit tutar ya da BÖLÜM(toplam;100)*yüzde; kişi başı = BÖLÜM(toplam-gider-anne; kişi sayısı)
+function calc(mo){
+  const rentOf=p=>+((mo.rents||{})[p.id])||0;
+  const isPaid=p=>!!(mo.paid&&mo.paid[p.id]);
+  const total=state.properties.filter(isPaid).reduce((a,p)=>a+rentOf(p),0);
+  const expected=state.properties.reduce((a,p)=>a+rentOf(p),0);
+  const waiting=state.properties.filter(p=>!isPaid(p)&&rentOf(p)>0);
+  const gider=(mo.expenses||[]).reduce((a,e)=>a+(+e.amount||0),0);
+  const rule=mo.primary||state.primary;
+  const raw=rule.mode==='fixed'?(+rule.value||0):Math.floor(total/100)*(+rule.value||0);
+  const anne=Math.max(0,Math.min(raw,total-gider));
+  const n=state.members.length;
+  const kalan=total-gider-anne;
+  const share=n&&kalan>0?Math.trunc(kalan/n):0;
+  const fark=total>0?Math.round((total-gider-anne-share*n)*100)/100:0;
+  return {total,expected,waiting,gider,anne,share,fark,n,rule};
+}
+
+/* ---------- Bu ay ---------- */
+function kiralarHTML(){
+  const mo=getMonth(state.year,month);
+  return state.properties.map(p=>{
+    const paid=!!mo.paid[p.id], amt=+mo.rents[p.id]||0;
+    if(editing===p.id)return `<div class="rent editing"><label for="r-${p.id}">${esc(p.name)} kirası</label>
+      <div class="edit"><div class="box"><input class="money" type="text" inputmode="numeric" id="r-${p.id}" data-rent-edit="${p.id}" value="${amt?fmt(amt):''}" placeholder="0"></div>
+      <button class="btn primary" data-act="save-rent" data-id="${p.id}">Kaydet</button></div>
+      <button class="btn small" data-act="cancel-rent">Vazgeç</button>
+      <p class="hint">Sonraki aylar da bu tutarla gelir.</p></div>`;
+    return `<div class="rent${paid?' paid':''}">
+      <div class="rinfo"><span class="rname">${esc(p.name)}</span>
+        <button class="amtbtn" data-act="edit-rent" data-id="${p.id}" aria-label="${esc(p.name)}: ${tl(amt)}, tutarı değiştir">${tl(amt)}</button></div>
+      <button class="tick" data-act="paid" data-id="${p.id}" aria-pressed="${paid}">${paid?'✓ Yattı':'Yattı'}</button></div>`;
+  }).join('');
+}
+function toplamHTML(){
+  const c=calc(getMonth(state.year,month));
+  return `<div class="sumline"><span>Yatan toplam</span><span class="num">${tl(c.total)}</span></div>
+    ${c.waiting.length?`<p class="hint">Beklenen: ${tl(c.expected)}. Henüz yatmayan: ${c.waiting.map(p=>esc(p.name)).join(', ')}.</p>`:`<p class="hint">Bu ayın bütün kiraları yattı.</p>`}`;
+}
+function sonucHTML(){
+  const mo=getMonth(state.year,month), c=calc(mo);
+  if(c.total<=0)return `<h2><span class="step">2</span>Kime ne kadar</h2><p class="hint">Yatan kiraları işaretleyince herkesin payı burada görünür.</p>`;
+  const people=[{id:'_p',name:state.primary.name,amt:c.anne}].concat(state.members.map(m=>({id:m.id,name:m.name,amt:c.share})));
+  const left=people.filter(p=>!mo.sent[p.id]).length;
+  return `<h2><span class="step">2</span>Kime ne kadar</h2>
+    ${c.waiting.length?`<p class="hint">Yalnızca yatan kiralar paylaştırılıyor.</p>`:''}
+    ${c.gider>c.total?`<p class="warn">Masraf, yatan kiradan fazla. Masraf tutarlarını kontrol edin.</p>`:''}
+    <div>${people.map(p=>`<div class="person"><div class="who"><b>${esc(p.name)}</b><span>${tl(p.amt)}</span></div>
+      <button class="tick" data-act="sent" data-id="${p.id}" aria-pressed="${!!mo.sent[p.id]}">${mo.sent[p.id]?'✓ Gönderildi':'Gönderdim'}</button></div>`).join('')}
+      ${c.gider>0?`<div class="extra"><span>Masraf</span><span class="num">${tl(c.gider)}</span></div>`:''}
+      ${c.fark?`<div class="extra"><span>Artan küsurat</span><span class="num mark">${tl(c.fark)}</span></div>`:''}
+    </div>
+    <p class="hint">${left?`${left} kişiye daha gönderilecek.`:'Bu ay herkese gönderildi.'}</p>
+    <button class="btn primary wide" data-act="copy-summary">Aileye yazılacak mesajı kopyala</button>
+    <p class="toast" role="status">${esc(toast)}</p>`;
+}
+function renderAy(){
+  const mo=getMonth(state.year,month), rule=mo.primary;
+  return `<div class="stepper">
+    <button class="arrow" data-act="step" data-d="-1" aria-label="Önceki ay">‹</button>
+    <b>${AY[month]} ${state.year}</b>
+    <button class="arrow" data-act="step" data-d="1" aria-label="Sonraki ay">›</button></div>
+  <section class="panel">
+    <h2><span class="step">1</span>Yatan kiraları işaretleyin</h2>
+    <p class="hint">Tutar değiştiyse rakama dokunun.</p>
+    <div id="kiralar">${kiralarHTML()}</div>
+    <div id="toplam">${toplamHTML()}</div>
+    <details${mo.expenses.length?' open':''}><summary>Bu ay masraf var mı?</summary><div>
+      ${mo.expenses.map(e=>`<div class="line">
+        <input class="grow" type="text" id="ed-${e.id}" data-exp-desc="${e.id}" value="${esc(e.desc)}" placeholder="Ne için?" aria-label="Masraf açıklaması">
+        <input class="money w-amt" type="text" inputmode="numeric" id="ea-${e.id}" data-exp-amt="${e.id}" value="${e.amount?fmt(e.amount):''}" placeholder="0" aria-label="Masraf tutarı">
+        <button class="x" data-act="del-exp" data-id="${e.id}" aria-label="Masrafı sil">×</button></div>`).join('')}
+      <button class="btn small" data-act="add-exp">Masraf ekle</button>
+      <p class="hint">Masraf, paylaşmadan önce toplamdan düşülür.</p></div></details>
+  </section>
+  <section class="panel" id="sonuc">${sonucHTML()}</section>
+  <section class="panel">
+    <details style="border:0;padding:0"><summary>${esc(state.primary.name)} payını bu ay için değiştir</summary><div>
+      <div class="line"><select class="grow" id="ruleMode" data-rule="mode" aria-label="Pay türü">
+        <option value="percent"${rule.mode==='percent'?' selected':''}>Toplamın yüzdesi</option>
+        <option value="fixed"${rule.mode==='fixed'?' selected':''}>Sabit tutar</option></select>
+        <input class="money w-amt" type="text" inputmode="decimal" id="ruleValue" data-rule="value" value="${fmt(rule.value)}" aria-label="Pay değeri"></div>
+      <p class="hint">Kalan para ${state.members.length} kişiye eşit bölünür.</p></div></details>
+  </section>`;
+}
+function refreshComputed(){
+  const k=document.getElementById('kiralar'), s=document.getElementById('sonuc'), t=document.getElementById('toplam');
+  if(k&&!editing)k.innerHTML=kiralarHTML(); if(s)s.innerHTML=sonucHTML(); if(t)t.innerHTML=toplamHTML();
+}
+
+/* ---------- Bütün yıl ---------- */
+function renderYil(){
+  const y=state.year, P=state.primary.name;
+  const cs=AY.map((_,i)=>({mo:peek(y,i),c:calc(peek(y,i))}));
+  const td=v=>`<td>${fmt(v)}</td>`;
+  const sum=f=>cs.reduce((a,x)=>a+f(x),0);
+  const paidRent=(x,p)=>x.mo.paid&&x.mo.paid[p.id]?(+x.mo.rents[p.id]||0):0;
+  const t1=`<table><thead><tr><th>Ay</th>${state.properties.map(p=>`<th>${esc(p.name)}</th>`).join('')}<th>Toplam</th></tr></thead><tbody>
+    ${cs.map((x,i)=>`<tr><td>${AY[i]}</td>${state.properties.map(p=>td(paidRent(x,p))).join('')}${td(x.c.total)}</tr>`).join('')}</tbody>
+    <tfoot><tr><td>Yıl</td>${state.properties.map(p=>td(sum(x=>paidRent(x,p)))).join('')}${td(sum(x=>x.c.total))}</tr></tfoot></table>`;
+  const t2=`<table><thead><tr><th>Ay</th><th>${esc(P)}</th>${state.members.map(m=>`<th>${esc(m.name)}</th>`).join('')}<th>Masraf</th><th>Artan</th></tr></thead><tbody>
+    ${cs.map((x,i)=>`<tr><td>${AY[i]}</td>${td(x.c.anne)}${state.members.map(()=>td(x.c.share)).join('')}${td(x.c.gider)}${td(x.c.fark)}</tr>`).join('')}</tbody>
+    <tfoot><tr><td>Yıl</td>${td(sum(x=>x.c.anne))}${state.members.map(()=>td(sum(x=>x.c.share))).join('')}${td(sum(x=>x.c.gider))}${td(sum(x=>x.c.fark))}</tr></tfoot></table>`;
+  return `<div class="stepper">
+    <button class="arrow" data-act="year" data-d="-1" aria-label="Önceki yıl">‹</button><b>${y}</b>
+    <button class="arrow" data-act="year" data-d="1" aria-label="Sonraki yıl">›</button></div>
+  <section class="panel">
+    <div class="sumline" style="border:0;padding:0"><span>Yıl boyunca yatan</span><span class="num">${tl(sum(x=>x.c.total))}</span></div>
+    <p class="hint">Bir aya dokununca o ay açılır.</p>
+    <div>${cs.map((x,i)=>`<button class="mrow${x.c.total>0?'':' empty'}" data-act="open-month" data-m="${i}"><b>${AY[i]}</b>
+      <span class="r">${x.c.total>0?`<span>${tl(x.c.total)}</span><small>kişi başı ${tl(x.c.share)}</small>`:'kira işaretlenmedi'}</span></button>`).join('')}</div>
+  </section>
+  <section class="panel"><details style="border:0;padding:0"><summary>Ayrıntılı tabloları göster</summary><div>
+    <div class="scroll">${t1}</div><div class="scroll">${t2}</div><p class="hint">Tablolar yana kaydırılabilir.</p></div></details></section>`;
+}
+
+/* ---------- Ayarlar ---------- */
+function renderAyarlar(){
+  const p=state.primary;
+  return `<p class="hint">Bu sayfa kurulum içindir. Her ay buraya girmeniz gerekmez.</p>
+  <section class="panel"><h2>Kiradaki yerler</h2>
+    ${state.properties.map(it=>`<div class="prop">
+      <div class="line"><input class="grow" type="text" id="prop-${it.id}" data-name="prop" data-id="${it.id}" value="${esc(it.name)}" aria-label="Yer adı">
+        <button class="btn small danger" data-act="del-prop" data-id="${it.id}">${pendingDel===it.id?'Eminim, sil':'Sil'}</button></div>
+      <div class="line"><label class="grow hint" for="pr-${it.id}">Aylık kira</label>
+        <div class="box w-amt" style="flex:0 0 160px"><input class="money" type="text" inputmode="numeric" id="pr-${it.id}" data-prop-rent="${it.id}" value="${it.rent?fmt(it.rent):''}" placeholder="0"></div></div>
+    </div>`).join('')}
+    <button class="btn small" data-act="add-prop">Yer ekle</button>
+    <p class="hint">Kira değişirse bu ay ve sonraki, henüz yatmamış aylar yeni tutarla gelir.</p></section>
+  <section class="panel"><h2>Eşit pay alanlar</h2>
+    ${state.members.map(it=>`<div class="line">
+      <input class="grow" type="text" id="mem-${it.id}" data-name="mem" data-id="${it.id}" value="${esc(it.name)}" aria-label="Kişi adı">
+      <button class="btn small danger" data-act="del-mem" data-id="${it.id}">${pendingDel===it.id?'Eminim, sil':'Sil'}</button></div>`).join('')}
+    <button class="btn small" data-act="add-mem">Kişi ekle</button></section>
+  <section class="panel"><h2>Öncelikli pay</h2>
+    <div class="field"><label for="pName">Kim alıyor</label><input type="text" id="pName" data-primary="name" value="${esc(p.name)}"></div>
+    <div class="line"><select class="grow" id="pMode" data-primary="mode" aria-label="Pay türü">
+      <option value="percent"${p.mode==='percent'?' selected':''}>Toplamın yüzdesi</option><option value="fixed"${p.mode==='fixed'?' selected':''}>Sabit tutar</option></select>
+      <input class="money w-amt" type="text" inputmode="decimal" id="pValue" data-primary="value" value="${fmt(p.value)}" aria-label="Pay değeri"></div>
+    <p class="hint">Yeni açılan aylar bu kuralla başlar.</p></section>
+  <section class="panel"><h2>Yedek</h2>
+    <p class="hint">Bilgiler yalnızca bu telefonda durur. Başka cihaza taşımak için yedeği kopyalayın, orada yapıştırıp yükleyin.</p>
+    <button class="btn wide" data-act="backup-copy">Yedeği kopyala</button><p class="toast" role="status">${esc(toast)}</p>
+    <textarea id="backupBox" rows="3" placeholder="Yedek metnini buraya yapıştırın" aria-label="Yedek metni"></textarea>
+    <button class="btn wide" data-act="backup-load">Yedekten yükle</button>
+    <button class="btn wide danger" data-act="reset">${pendingDel==='reset'?'Eminim, her şeyi sil':'Örnek veriye dön'}</button></section>`;
+}
+
+/* ---------- Çatı ---------- */
+function view(){const h=location.hash.replace('#','');return ['ay','yil','ayarlar'].includes(h)?h:'ay'}
+function render(){
+  const v=view();
+  document.querySelectorAll('.tabs a').forEach(a=>a.getAttribute('href')==='#'+v?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current'));
+  document.getElementById('app').innerHTML=v==='yil'?renderYil():v==='ayarlar'?renderAyarlar():renderAy();
+  save();
+}
+function flash(msg){toast=msg;document.querySelectorAll('.toast').forEach(t=>t.textContent=msg);setTimeout(()=>{toast='';document.querySelectorAll('.toast').forEach(t=>t.textContent='')},3000)}
+function summaryText(){
+  const mo=getMonth(state.year,month),c=calc(mo);
+  const L=[`${AY[month]} ${state.year} kira paylaşımı`,`Yatan kira: ${tl(c.total)}`];
+  if(c.waiting.length)L.push(`Henüz yatmayan: ${c.waiting.map(p=>p.name).join(', ')}`);
+  if(c.gider>0){L.push(`Masraf: ${tl(c.gider)}`);mo.expenses.forEach(e=>{if(e.amount)L.push(`  - ${e.desc||'Masraf'}: ${tl(e.amount)}`)})}
+  L.push('',`${state.primary.name}: ${tl(c.anne)}`);
+  state.members.forEach(m=>L.push(`${m.name}: ${tl(c.share)}`));
+  if(c.fark)L.push('',`Artan: ${tl(c.fark)}`);
+  return L.join('\n');
+}
+async function copy(text,ok){
+  try{if(window.KiraAndroid&&window.KiraAndroid.copy){window.KiraAndroid.copy(text);flash(ok);return}}catch(e){}
+  try{await navigator.clipboard.writeText(text);flash(ok)}
+  catch(e){const b=document.getElementById('backupBox');if(b){b.value=text;b.select()}flash('Kopyalanamadı')}
+}
+function focusEdit(){const i=document.querySelector('[data-rent-edit]');if(i){i.focus();try{i.select()}catch(x){}}}
+function saveRent(id){
+  const i=document.getElementById('r-'+id); if(!i)return;
+  const v=parseMoney(i.value), mo=getMonth(state.year,month);
+  mo.rents[id]=v; setRent(id,v,mkey(state.year,month));
+  editing=null; render();
+}
+
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b)return;
+  const act=b.dataset.act,id=b.dataset.id;
+  if(act!=='del-prop'&&act!=='del-mem'&&act!=='reset')pendingDel=null;
+  if(act!=='save-rent'&&act!=='edit-rent'&&editing){editing=null;if(act==='cancel-rent'){render();return}}
+  if(act==='year'){state.year+=+b.dataset.d;render()}
+  else if(act==='step'){
+    month+=+b.dataset.d;
+    if(month<0){month=11;state.year--} else if(month>11){month=0;state.year++}
+    render();
+  }
+  else if(act==='open-month'){month=+b.dataset.m;location.hash='ay';window.scrollTo(0,0)}
+  else if(act==='paid'){const mo=getMonth(state.year,month);mo.paid[id]=!mo.paid[id];save();render()}
+  else if(act==='edit-rent'){editing=id;render();focusEdit()}
+  else if(act==='save-rent')saveRent(id);
+  else if(act==='sent'){const mo=getMonth(state.year,month);mo.sent[id]=!mo.sent[id];save();refreshComputed()}
+  else if(act==='add-exp'){getMonth(state.year,month).expenses.push({id:uid(),desc:'',amount:0});render();const l=document.querySelectorAll('[data-exp-desc]');l[l.length-1]?.focus()}
+  else if(act==='del-exp'){const mo=getMonth(state.year,month);mo.expenses=mo.expenses.filter(x=>x.id!==id);render()}
+  else if(act==='copy-summary')copy(summaryText(),'Mesaj kopyalandı. WhatsApp\'a yapıştırabilirsiniz.');
+  else if(act==='add-prop'){state.properties.push({id:uid(),name:'Yeni yer',rent:0});render()}
+  else if(act==='add-mem'){state.members.push({id:uid(),name:'Yeni kişi'});render()}
+  else if(act==='del-prop'||act==='del-mem'){
+    if(pendingDel!==id){pendingDel=id;render();return}
+    pendingDel=null;
+    if(act==='del-prop')state.properties=state.properties.filter(x=>x.id!==id);else state.members=state.members.filter(x=>x.id!==id);
+    render();
+  }
+  else if(act==='backup-copy')copy(JSON.stringify(state),'Yedek kopyalandı.');
+  else if(act==='backup-load'){
+    try{const s=JSON.parse(document.getElementById('backupBox').value);if(!valid(s))throw 0;state=migrate(s);render();flash('Yedek yüklendi.')}
+    catch(err){flash('Bu metin geçerli bir yedek değil.')}
+  }
+  else if(act==='reset'){if(pendingDel!=='reset'){pendingDel='reset';render();return}pendingDel=null;state=seed();month=pickMonth();render()}
+});
+document.addEventListener('keydown',e=>{
+  const t=e.target;
+  if(e.key==='Enter'&&t.dataset&&t.dataset.rentEdit){e.preventDefault();saveRent(t.dataset.rentEdit)}
+  if(e.key==='Escape'&&editing){editing=null;render()}
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.classList.contains('money')&&t.value.trim()!=='')t.value=fmt(t.dataset.rule||t.dataset.primary?parseNum(t.value):parseMoney(t.value));
+});
+document.addEventListener('focusin',e=>{if(e.target.classList&&e.target.classList.contains('money'))setTimeout(()=>{try{e.target.select()}catch(x){}},0)});
+document.addEventListener('input',e=>{
+  const t=e.target,d=t.dataset;
+  if(d.expAmt){const x=getMonth(state.year,month).expenses.find(x=>x.id===d.expAmt);if(x)x.amount=parseMoney(t.value)}
+  else if(d.expDesc){const x=getMonth(state.year,month).expenses.find(x=>x.id===d.expDesc);if(x)x.desc=t.value}
+  else if(d.rule){const r=getMonth(state.year,month).primary;if(d.rule==='mode')r.mode=t.value;else r.value=parseNum(t.value)}
+  else if(d.primary){if(d.primary==='name')state.primary.name=t.value;else if(d.primary==='mode')state.primary.mode=t.value;else state.primary.value=parseNum(t.value)}
+  else if(d.propRent){const n=new Date();setRent(d.propRent,parseMoney(t.value),mkey(n.getFullYear(),n.getMonth()))}
+  else if(d.name){const it=(d.name==='prop'?state.properties:state.members).find(x=>x.id===d.id);if(it)it.name=t.value}
+  else return;
+  save(); if(view()==='ay')refreshComputed();
+});
+window.addEventListener('hashchange',()=>{pendingDel=null;editing=null;render()});
+render();
+if('serviceWorker' in navigator&&location.protocol==='https:'){
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
+}
+</script>
+</body>
+</html>
